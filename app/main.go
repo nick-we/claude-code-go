@@ -77,6 +77,7 @@ func main() {
 		}
 
 		if len(resp.Choices[0].Message.ToolCalls) == 0 {
+
 			fmt.Print(resp.Choices[0].Message.Content)
 			break
 		} else {
@@ -92,7 +93,6 @@ func main() {
 			functionName := resp.Choices[0].Message.ToolCalls[0].Function.Name
 			switch functionName {
 			case "Read":
-				fmt.Print(resp.Choices[0].Message.Content)
 				argJsonString := resp.Choices[0].Message.ToolCalls[0].Function.Arguments
 				if len(argJsonString) == 0 {
 					fmt.Fprintln(os.Stderr, "No arguments in function call")
