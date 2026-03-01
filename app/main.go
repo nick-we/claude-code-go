@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -72,7 +73,34 @@ func main() {
 		panic("No choices in response")
 	}
 
-	fmt.Fprintln(os.Stderr, "Logs from your program will appear here!")
+	if len(resp.Choices[0].Message.ToolCalls) == 0 {
+		fmt.Print(resp.Choices[0].Message.Content)
+	} else {
+		functionName := resp.Choices[0].Message.ToolCalls[0].Function.Name
+		switch functionName {
+		case "Read":
+			fmt.Print(resp.Choices[0].Message.Content)
+			argJsonString := resp.Choices[0].Message.ToolCalls[0].Function.Arguments
+			if len(argJsonString) == 0 {
+				fmt.Fprintln(os.Stderr, "No arguments in function call")
+				os.Exit(1)
+			}
+
+			args := make(map[string]any, 0)
+			if err := json.Unmarshal([]byte(argJsonString), &args); err != nil {
+				fmt.Fprintln(os.Stderr, "Invalid arguments in function call")
+				os.Exit(1)
+			}
+
+			filePath := args["file_path"].(string)
+			fileContent, err := os.ReadFile(filePath)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "Error reading file")
+				os.Exit(1)
+			}
+			fmt.Print(string(fileContent))
+		}
+	}
 
 	fmt.Print(resp.Choices[0].Message.Content)
 }
