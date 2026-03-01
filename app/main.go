@@ -8,6 +8,8 @@ import (
 
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
+	"github.com/openai/openai-go/v3/packages/param"
+	"github.com/openai/openai-go/v3/shared"
 )
 
 func main() {
@@ -41,6 +43,24 @@ func main() {
 						},
 					},
 				},
+			},
+			Tools: []openai.ChatCompletionToolUnionParam{
+				openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
+					Name:        "Read",
+					Description: param.Opt[string]{Value: "Read and return the contents of a file"},
+					Parameters: shared.FunctionParameters{
+						"type": "object",
+						"properties": map[string]shared.FunctionParameters{
+							"file_path": {
+								"type":        "string",
+								"description": "The path to the file to read",
+							},
+						},
+						"required": []string{
+							"file_path",
+						},
+					},
+				}),
 			},
 		},
 	)
