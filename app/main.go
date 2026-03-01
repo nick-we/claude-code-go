@@ -65,6 +65,27 @@ func main() {
 							},
 						},
 					}),
+					openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
+						Name:        "Write",
+						Description: param.Opt[string]{Value: "Write content to a file"},
+						Parameters: shared.FunctionParameters{
+							"type": "object",
+							"properties": map[string]shared.FunctionParameters{
+								"file_path": {
+									"type":        "string",
+									"description": "The path of the file to write to",
+								},
+								"content": {
+									"type":        "string",
+									"description": "The content to write to the file",
+								},
+							},
+							"required": []string{
+								"file_path",
+								"content",
+							},
+						},
+					}),
 				},
 			},
 		)
@@ -91,20 +112,21 @@ func main() {
 			})
 
 			functionName := resp.Choices[0].Message.ToolCalls[0].Function.Name
+
+			argJsonString := resp.Choices[0].Message.ToolCalls[0].Function.Arguments
+			if len(argJsonString) == 0 {
+				fmt.Fprintln(os.Stderr, "No arguments in function call")
+				os.Exit(1)
+			}
+
+			args := make(map[string]any, 0)
+			if err := json.Unmarshal([]byte(argJsonString), &args); err != nil {
+				fmt.Fprintln(os.Stderr, "Invalid arguments in function call")
+				os.Exit(1)
+			}
+
 			switch functionName {
 			case "Read":
-				argJsonString := resp.Choices[0].Message.ToolCalls[0].Function.Arguments
-				if len(argJsonString) == 0 {
-					fmt.Fprintln(os.Stderr, "No arguments in function call")
-					os.Exit(1)
-				}
-
-				args := make(map[string]any, 0)
-				if err := json.Unmarshal([]byte(argJsonString), &args); err != nil {
-					fmt.Fprintln(os.Stderr, "Invalid arguments in function call")
-					os.Exit(1)
-				}
-
 				filePath := args["file_path"].(string)
 				fileContent, err := os.ReadFile(filePath)
 				if err != nil {
@@ -117,6 +139,22 @@ func main() {
 						ToolCallID: resp.Choices[0].Message.ToolCalls[0].ID,
 						Content: openai.ChatCompletionToolMessageParamContentUnion{
 							OfString: openai.String(string(fileContent)),
+						},
+					},
+				})
+			case "Write":
+				filePath := args["file_path"].(string)
+				content := args["content"].(string)
+				if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
+					fmt.Fprintln(os.Stderr, "Error writing file")
+					os.Exit(1)
+				}
+
+				chatMessages = append(chatMessages, openai.ChatCompletionMessageParamUnion{
+					OfTool: &openai.ChatCompletionToolMessageParam{
+						ToolCallID: resp.Choices[0].Message.ToolCalls[0].ID,
+						Content: openai.ChatCompletionToolMessageParamContentUnion{
+							OfString: openai.String("File written successfully"),
 						},
 					},
 				})
