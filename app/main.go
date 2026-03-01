@@ -101,6 +101,4 @@ func main() {
 			fmt.Print(string(fileContent))
 		}
 	}
-
-	fmt.Print(resp.Choices[0].Message.Content)
 }
